@@ -682,6 +682,7 @@ let USER_NAME = '';
 let conversationHistory = [];
 let isSleeping = false;
 let allSessions = [];
+let allSummaries = [];
 let pendingPhotoBase64 = null;
 let pendingPhotoMediaType = null;
 
@@ -732,7 +733,11 @@ function getSystemPrompt() {
 
 你不是治疗师，你是陪伴者。你的目标是：让对方感受到被看见，仅此而已。
 
-今天是 ${new Date().toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'})}。`;
+今天是 ${new Date().toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'})}。${
+  allSummaries.length > 0
+    ? `\n\n以下是用户最近几天的简短记录，帮助你了解她最近的状态（不要主动提起这些，只是作为背景了解）：\n${allSummaries.map(s => `${s.date}：${s.summary}`).join('\n')}`
+    : ''
+}`;
 }
 
 function startApp() {
@@ -781,6 +786,66 @@ function loadHistory() {
       conversationHistory = todaySession.messages || [];
     }
   }
+  loadSummaries();
+  catchUpMissedSummaries();
+}
+
+function catchUpMissedSummaries() {
+  // 检查过去7天里，有对话但没有摘要的那些天，补上
+  const today = new Date().toDateString();
+  const missedSessions = allSessions.filter(s => {
+    const isToday = new Date(s.date).toDateString() === today;
+    if (isToday) return false; // 今天不补，今天说晚安才总结
+    const hasMessages = (s.messages || []).filter(m => m.role === 'user').length >= 2;
+    if (!hasMessages) return false;
+    const dateStr = new Date(s.date).toLocaleDateString('zh-CN', {month:'long', day:'numeric'});
+    const alreadySummarized = allSummaries.some(sum => sum.date === dateStr);
+    return !alreadySummarized;
+  });
+
+  if (missedSessions.length === 0) return;
+
+  // 一次只补最近一天，不一次性发太多请求
+  const session = missedSessions[missedSessions.length - 1];
+  summarizeSession(session);
+}
+
+async function summarizeSession(session) {
+  const dateStr = new Date(session.date).toLocaleDateString('zh-CN', {month:'long', day:'numeric'});
+  const messages = (session.messages || []).map(m => {
+    const role = m.role === 'user' ? '我' : SUMMER_NAME;
+    const content = typeof m.content === 'string'
+      ? m.content
+      : m.content.map(c => c.text || '[图片]').join(' ');
+    return `${role}: ${content}`;
+  }).join('\n');
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 120,
+        messages: [{
+          role: 'user',
+          content: `以下是用户某天的对话记录。请用1-2句话概括这天的情绪状态和主要发生的事，语言简洁克制，不评判。只输出摘要本身，不要任何前缀。\n\n${messages}`
+        }]
+      })
+    });
+    const data = await response.json();
+    if (data.content && data.content[0]) {
+      saveSummary(dateStr, data.content[0].text);
+      loadSummaries();
+    }
+  } catch (e) {
+    // 静默失败
+  }
 }
 
 function saveHistory() {
@@ -791,6 +856,36 @@ function saveHistory() {
   else allSessions.push(session);
   if (allSessions.length > 90) allSessions = allSessions.slice(-90);
   localStorage.setItem('summer_sessions', JSON.stringify(allSessions));
+}
+
+function loadSummaries() {
+  const saved = localStorage.getItem('summer_summaries');
+  if (saved) {
+    allSummaries = JSON.parse(saved);
+    // 只保留最近7天
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 7);
+    allSummaries = allSummaries.filter(s => new Date(s.date) >= cutoff);
+  }
+}
+
+function saveSummary(dateStr, summaryText) {
+  loadSummaries();
+  // 如果今天已经有摘要就覆盖
+  const idx = allSummaries.findIndex(s => s.date === dateStr);
+  if (idx >= 0) allSummaries[idx].summary = summaryText;
+  else allSummaries.push({ date: dateStr, summary: summaryText });
+  localStorage.setItem('summer_summaries', JSON.stringify(allSummaries));
+}
+
+async function generateDailySummary() {
+  const userMessages = conversationHistory.filter(m => m.role === 'user');
+  if (userMessages.length < 2) return;
+  const todayStr = new Date().toLocaleDateString('zh-CN', {month:'long', day:'numeric'});
+  const alreadySummarized = allSummaries.some(s => s.date === todayStr);
+  if (alreadySummarized) return;
+  const todaySession = { date: new Date().toISOString(), messages: conversationHistory };
+  await summarizeSession(todaySession);
 }
 
 function addDateSeparator() {
@@ -924,7 +1019,9 @@ async function sendMessage() {
     showTyping();
     await new Promise(r => setTimeout(r, 800));
     hideTyping();
-    addMessage('summer', '好，我在这里。🌙');
+    const isGoodnight = userContent.includes('晚安');
+    addMessage('summer', isGoodnight ? '晚安 🌙 今天的你我都记住了。' : '好，我在这里。🌙');
+    if (isGoodnight) generateDailySummary(); // 悄悄在后台总结今天
     document.getElementById('send-btn').disabled = false;
     return;
   }
