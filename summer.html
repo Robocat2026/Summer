@@ -577,6 +577,8 @@
     <div class="header-right">
       <button class="icon-btn" onclick="toggleSleep()" title="让 Summer 休息一会">😴</button>
       <button class="icon-btn" onclick="generateReport()" title="生成本周回顾">📋</button>
+      <button class="icon-btn" onclick="exportData()" title="导出全部数据">💾</button>
+      <button class="icon-btn" onclick="openSyncModal()" title="跨设备同步">🔄</button>
     </div>
   </header>
 
@@ -611,6 +613,7 @@
     <div class="input-row">
       <button class="icon-btn" onclick="document.getElementById('photo-input').click()" title="拍照记录今日饮食">📷</button>
       <input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event)" />
+      <button class="icon-btn" id="voice-btn" onclick="toggleVoice()" title="语音输入">🎤</button>
       <textarea id="msg-input" rows="1" placeholder="和 Summer 说点什么..." 
         onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
       <button class="send-btn" id="send-btn" onclick="sendMessage()">
@@ -634,6 +637,35 @@
     <div class="modal-actions">
       <button class="modal-btn" onclick="copyReport()">复制文本</button>
       <button class="modal-btn primary" onclick="document.getElementById('modal-overlay').classList.remove('open')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sync Modal -->
+<div id="sync-overlay" onclick="closeSyncModal(event)" style="display:none;position:fixed;inset:0;background:rgba(44,36,22,0.4);backdrop-filter:blur(4px);z-index:100;align-items:flex-end;justify-content:center;padding:1rem;">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">跨设备同步</div>
+      <button class="modal-close" onclick="document.getElementById('sync-overlay').style.display='none'">✕</button>
+    </div>
+
+    <p style="font-size:0.82rem;color:var(--ink-soft);line-height:1.7;margin-bottom:1rem;">
+      在这台设备生成「同步码」，复制后去另一台设备粘贴导入，数据完全不经过任何服务器。
+    </p>
+
+    <div style="margin-bottom:1rem;">
+      <div class="setup-label" style="margin-bottom:0.4rem;">第一步：从这台设备导出</div>
+      <button class="modal-btn primary" onclick="generateSyncCode()" style="width:100%">生成同步码</button>
+      <textarea id="sync-code-out" rows="3" readonly
+        style="width:100%;margin-top:0.6rem;padding:0.6rem;border:1px solid var(--border);border-radius:8px;font-size:0.75rem;font-family:monospace;background:var(--surface);resize:none;display:none;color:var(--ink-soft);"></textarea>
+      <button id="sync-copy-btn" onclick="copySyncCode()" class="modal-btn" style="width:100%;margin-top:0.4rem;display:none;">复制同步码</button>
+    </div>
+
+    <div>
+      <div class="setup-label" style="margin-bottom:0.4rem;">第二步：在新设备导入</div>
+      <textarea id="sync-code-in" rows="3" placeholder="把同步码粘贴到这里..."
+        style="width:100%;padding:0.6rem;border:1.5px solid var(--border);border-radius:8px;font-size:0.75rem;font-family:monospace;background:white;resize:none;color:var(--ink);outline:none;"></textarea>
+      <button class="modal-btn primary" onclick="importSyncCode()" style="width:100%;margin-top:0.4rem;">导入数据</button>
     </div>
   </div>
 </div>
@@ -1020,6 +1052,161 @@ function handleKey(e) {
 function autoResize(el) {
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function exportData() {
+  if (!allSessions || allSessions.length === 0) {
+    alert('还没有可以导出的记录～');
+    return;
+  }
+
+  let text = `Summer 对话记录\n导出时间：${new Date().toLocaleString('zh-CN')}\n`;
+  text += '='.repeat(40) + '\n\n';
+
+  allSessions.forEach(session => {
+    const date = new Date(session.date).toLocaleDateString('zh-CN', {
+      year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+    });
+    text += `📅 ${date}\n` + '-'.repeat(30) + '\n';
+    (session.messages || []).forEach(msg => {
+      const role = msg.role === 'user' ? '我' : SUMMER_NAME;
+      const content = typeof msg.content === 'string'
+        ? msg.content
+        : msg.content.map(c => c.text || '[图片]').join(' ');
+      text += `${role}：${content}\n`;
+    });
+    text += '\n';
+  });
+
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `summer-记录-${new Date().toISOString().slice(0,10)}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Voice Input ──────────────────────────────
+let recognition = null;
+let isListening = false;
+
+function toggleVoice() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('你的浏览器不支持语音输入，建议用 Chrome 或 Safari 试试。');
+    return;
+  }
+
+  if (isListening) {
+    recognition.stop();
+    return;
+  }
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.lang = 'zh-CN';
+  recognition.continuous = false;
+  recognition.interimResults = true;
+
+  const btn = document.getElementById('voice-btn');
+  const input = document.getElementById('msg-input');
+
+  recognition.onstart = () => {
+    isListening = true;
+    btn.textContent = '🔴';
+    btn.style.background = 'var(--accent-pale)';
+    input.placeholder = '听着呢...';
+  };
+
+  recognition.onresult = (e) => {
+    const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+    input.value = transcript;
+    autoResize(input);
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    btn.textContent = '🎤';
+    btn.style.background = '';
+    input.placeholder = '和 Summer 说点什么...';
+    // Auto-send if there's content
+    if (input.value.trim()) sendMessage();
+  };
+
+  recognition.onerror = () => {
+    isListening = false;
+    btn.textContent = '🎤';
+    btn.style.background = '';
+    input.placeholder = '和 Summer 说点什么...';
+  };
+
+  recognition.start();
+}
+
+// ── Sync ─────────────────────────────────────
+function openSyncModal() {
+  document.getElementById('sync-code-out').style.display = 'none';
+  document.getElementById('sync-copy-btn').style.display = 'none';
+  document.getElementById('sync-code-out').value = '';
+  document.getElementById('sync-code-in').value = '';
+  document.getElementById('sync-overlay').style.display = 'flex';
+}
+
+function closeSyncModal(e) {
+  if (e.target === document.getElementById('sync-overlay')) {
+    document.getElementById('sync-overlay').style.display = 'none';
+  }
+}
+
+function generateSyncCode() {
+  const data = {
+    sessions: allSessions,
+    name: SUMMER_NAME,
+    userName: USER_NAME,
+    exportedAt: new Date().toISOString()
+  };
+  const code = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  const out = document.getElementById('sync-code-out');
+  out.value = code;
+  out.style.display = 'block';
+  document.getElementById('sync-copy-btn').style.display = 'block';
+}
+
+function copySyncCode() {
+  const code = document.getElementById('sync-code-out').value;
+  navigator.clipboard.writeText(code).then(() => {
+    document.getElementById('sync-copy-btn').textContent = '已复制 ✓';
+    setTimeout(() => document.getElementById('sync-copy-btn').textContent = '复制同步码', 2000);
+  });
+}
+
+function importSyncCode() {
+  const code = document.getElementById('sync-code-in').value.trim();
+  if (!code) { alert('请先粘贴同步码'); return; }
+  try {
+    const data = JSON.parse(decodeURIComponent(escape(atob(code))));
+    if (!data.sessions) throw new Error('格式不对');
+
+    const existing = allSessions;
+    const incoming = data.sessions;
+
+    // Merge: keep all unique dates, prefer newer data for same date
+    const merged = {};
+    [...existing, ...incoming].forEach(s => {
+      const key = new Date(s.date).toDateString();
+      if (!merged[key] || new Date(s.date) > new Date(merged[key].date)) {
+        merged[key] = s;
+      }
+    });
+
+    allSessions = Object.values(merged).sort((a, b) => new Date(a.date) - new Date(b.date));
+    localStorage.setItem('summer_sessions', JSON.stringify(allSessions));
+
+    document.getElementById('sync-overlay').style.display = 'none';
+    alert(`导入成功！合并了 ${allSessions.length} 天的记录。`);
+  } catch(e) {
+    alert('同步码有问题，请重新生成试试。');
+  }
 }
 
 // Auto-load on revisit
