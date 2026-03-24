@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Summer · 你的私人陪伴</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=DM+Serif+Display:ital@0;1&family=Noto+Sans+SC:wght@300;400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   :root {
     --bg: #faf7f2;
@@ -339,20 +340,7 @@
     background: var(--border);
   }
 
-  /* Emotion chips */
-  #emotion-bar {
-    padding: 0.6rem 1rem;
-    display: flex;
-    gap: 0.5rem;
-    overflow-x: auto;
-    flex-shrink: 0;
-    border-top: 1px solid var(--border);
-    background: var(--bg);
-    scrollbar-width: none;
-  }
-
-  #emotion-bar::-webkit-scrollbar { display: none; }
-
+  /* Emotion chips (used by report selector) */
   .emotion-chip {
     flex-shrink: 0;
     padding: 0.35rem 0.8rem;
@@ -584,27 +572,6 @@
 
   <div id="messages"></div>
 
-  <div id="emotion-bar">
-    <div class="emotion-chip" onclick="selectEmotion(this, '平静 calm')">平静</div>
-    <div class="emotion-chip" onclick="selectEmotion(this, '焦虑 anxious')">焦虑</div>
-    <div class="emotion-chip" onclick="selectEmotion(this, '悲伤 sad')">悲伤</div>
-    <div class="emotion-chip" onclick="selectEmotion(this, '空 empty')">空</div>
-    <div class="emotion-chip" onclick="selectEmotion(this, '沉重 heavy')">沉重</div>
-    <div class="emotion-chip" onclick="selectEmotion(this, '烦躁 irritable')">烦躁</div>
-    <div class="emotion-chip" onclick="selectEmotion(this, '迷失 lost')">迷失</div>
-    <div class="emotion-chip" onclick="selectEmotion(this, '无力 exhausted')">无力</div>
-    <div class="emotion-chip" onclick="selectEmotion(this, '温暖 warm')">温暖</div>
-    <div class="emotion-chip" onclick="selectEmotion(this, '有力量 empowered')">有力量</div>
-    <div class="emotion-chip" onclick="selectEmotion(this, '期待 hopeful')">期待</div>
-    <div class="emotion-chip" onclick="selectEmotion(this, '委屈 wronged')">委屈</div>
-    <div class="emotion-chip" onclick="selectEmotion(this, '羞耻 shame')">羞耻</div>
-    <div class="emotion-chip" onclick="selectEmotion(this, '内疚 guilt')">内疚</div>
-    <div class="emotion-chip" onclick="selectEmotion(this, '孤独 lonely')">孤独</div>
-    <div class="emotion-chip" onclick="selectEmotion(this, '麻木 numb')">麻木</div>
-    <div class="emotion-chip" onclick="selectEmotion(this, '好奇 curious')">好奇</div>
-    <div class="emotion-chip" onclick="selectEmotion(this, '感激 grateful')">感激</div>
-  </div>
-
   <div id="input-area">
     <div id="photo-preview" style="display:none; padding: 0.5rem 0; position:relative;">
       <img id="preview-img" style="max-height:120px; border-radius:10px; border:1px solid var(--border);" />
@@ -655,12 +622,19 @@
     </div>
 
     <p style="font-size:0.82rem;color:var(--ink-soft);line-height:1.7;margin-bottom:1rem;">
-      在这台设备生成「同步码」，复制后去另一台设备粘贴导入，数据完全不经过任何服务器。
+      数据完全不经过任何服务器。数据量小时会生成二维码，数据量大时请用同步码复制粘贴。
     </p>
 
     <div style="margin-bottom:1rem;">
       <div class="setup-label" style="margin-bottom:0.4rem;">第一步：从这台设备导出</div>
       <button class="modal-btn primary" onclick="generateSyncCode()" style="width:100%">生成同步码</button>
+      <div id="sync-qr-container" style="display:none;margin-top:0.8rem;text-align:center;">
+        <div id="sync-qr" style="display:inline-block;padding:12px;background:white;border-radius:12px;border:1px solid var(--border);"></div>
+        <p style="font-size:0.72rem;color:var(--ink-faint);margin-top:0.5rem;">用另一台设备扫描此二维码，复制内容后在 Summer 中导入</p>
+      </div>
+      <div id="sync-text-fallback" style="display:none;">
+        <p style="font-size:0.72rem;color:var(--ink-faint);margin-top:0.5rem;">数据量较大，无法生成二维码，请复制下方同步码。</p>
+      </div>
       <textarea id="sync-code-out" rows="3" readonly
         style="width:100%;margin-top:0.6rem;padding:0.6rem;border:1px solid var(--border);border-radius:8px;font-size:0.75rem;font-family:monospace;background:var(--surface);resize:none;display:none;color:var(--ink-soft);"></textarea>
       <button id="sync-copy-btn" onclick="copySyncCode()" class="modal-btn" style="width:100%;margin-top:0.4rem;display:none;">复制同步码</button>
@@ -991,15 +965,6 @@ function hideTyping() {
   if (t) t.remove();
 }
 
-function selectEmotion(el, emotion) {
-  document.querySelectorAll('.emotion-chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  const input = document.getElementById('msg-input');
-  input.value = emotion;
-  input.focus();
-  autoResize(input);
-}
-
 async function sendMessage() {
   if (isSleeping) return;
   
@@ -1013,7 +978,6 @@ async function sendMessage() {
   
   input.value = '';
   autoResize(input);
-  document.querySelectorAll('.emotion-chip').forEach(c => c.classList.remove('active'));
   document.getElementById('send-btn').disabled = true;
   
   // Show user message
@@ -1312,8 +1276,12 @@ function toggleVoice() {
 function openSyncModal() {
   document.getElementById('sync-code-out').style.display = 'none';
   document.getElementById('sync-copy-btn').style.display = 'none';
+  document.getElementById('sync-qr-container').style.display = 'none';
+  document.getElementById('sync-text-fallback').style.display = 'none';
   document.getElementById('sync-code-out').value = '';
   document.getElementById('sync-code-in').value = '';
+  const qrEl = document.getElementById('sync-qr');
+  qrEl.innerHTML = '';
   document.getElementById('sync-overlay').style.display = 'flex';
 }
 
@@ -1333,6 +1301,27 @@ function generateSyncCode() {
   const code = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
   const out = document.getElementById('sync-code-out');
   out.value = code;
+
+  const QR_MAX_LENGTH = 2500;
+
+  if (code.length <= QR_MAX_LENGTH && typeof QRCode !== 'undefined') {
+    const qrEl = document.getElementById('sync-qr');
+    qrEl.innerHTML = '';
+    new QRCode(qrEl, {
+      text: code,
+      width: 200,
+      height: 200,
+      colorDark: '#2c2416',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.L
+    });
+    document.getElementById('sync-qr-container').style.display = 'block';
+    document.getElementById('sync-text-fallback').style.display = 'none';
+  } else {
+    document.getElementById('sync-qr-container').style.display = 'none';
+    document.getElementById('sync-text-fallback').style.display = 'block';
+  }
+
   out.style.display = 'block';
   document.getElementById('sync-copy-btn').style.display = 'block';
 }
