@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Summer · 你的私人陪伴</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500&family=DM+Serif+Display:ital@0;1&family=Noto+Sans+SC:wght@300;400&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
 <style>
   :root {
     --bg: #faf7f2;
@@ -532,7 +532,6 @@
     max-width: 75%;
     word-break: break-word;
   }
-
   .debug-panel .debug-title {
     font-family: 'Noto Sans SC', sans-serif;
     font-size: 0.7rem;
@@ -540,32 +539,22 @@
     margin-bottom: 0.3rem;
     font-weight: 500;
   }
-
   .debug-panel .debug-field {
     display: flex;
     gap: 0.5rem;
   }
-
   .debug-panel .debug-key {
     color: var(--ink-faint);
     min-width: 80px;
   }
-
   .debug-panel .debug-val {
     color: var(--ink);
   }
-
-  .debug-panel .debug-val.null {
-    color: var(--ink-faint);
-    font-style: italic;
-  }
-
   .debug-panel .debug-conf {
     margin-top: 0.3rem;
     padding-top: 0.3rem;
     border-top: 1px solid var(--border);
   }
-
   .icon-btn.active {
     background: var(--accent-pale);
     border-color: var(--accent-soft);
@@ -586,7 +575,6 @@
     z-index: 50;
     min-width: 160px;
   }
-
   .export-menu button {
     display: block;
     width: 100%;
@@ -599,9 +587,7 @@
     text-align: left;
     cursor: pointer;
     border-radius: 8px;
-    transition: background 0.1s;
   }
-
   .export-menu button:hover {
     background: var(--surface);
     color: var(--ink);
@@ -654,7 +640,7 @@
     <div class="header-right">
       <button class="icon-btn" onclick="toggleSleep()" title="让 Summer 休息一会">😴</button>
       <button class="icon-btn" id="debug-btn" onclick="toggleDebug()" title="查看提取结果">🔍</button>
-      <button class="icon-btn" onclick="generateReport()" title="生成本周回顾">📋</button>
+      <button class="icon-btn" onclick="generateReport()" title="生成回顾（原型）">📋</button>
       <div style="position:relative;">
         <button class="icon-btn" onclick="toggleExportMenu()" title="导出数据">💾</button>
         <div id="export-menu" class="export-menu" style="display:none;">
@@ -663,7 +649,6 @@
           <button onclick="exportReflectionsCSV(); closeExportMenu()">📅 每日小结 (CSV)</button>
         </div>
       </div>
-      <button class="icon-btn" onclick="openSyncModal()" title="跨设备同步">🔄</button>
     </div>
   </header>
 
@@ -710,127 +695,82 @@
   </div>
 </div>
 
-<!-- Sync Modal -->
-<div id="sync-overlay" onclick="closeSyncModal(event)" style="display:none;position:fixed;inset:0;background:rgba(44,36,22,0.4);backdrop-filter:blur(4px);z-index:100;align-items:flex-end;justify-content:center;padding:1rem;">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">跨设备同步</div>
-      <button class="modal-close" onclick="document.getElementById('sync-overlay').style.display='none'">✕</button>
-    </div>
-
-    <p style="font-size:0.82rem;color:var(--ink-soft);line-height:1.7;margin-bottom:1rem;">
-      数据完全不经过任何服务器。数据量小时会生成二维码，数据量大时请用同步码复制粘贴。
-    </p>
-
-    <div style="margin-bottom:1rem;">
-      <div class="setup-label" style="margin-bottom:0.4rem;">第一步：从这台设备导出</div>
-      <button class="modal-btn primary" onclick="generateSyncCode()" style="width:100%">生成同步码</button>
-      <div id="sync-qr-container" style="display:none;margin-top:0.8rem;text-align:center;">
-        <div id="sync-qr" style="display:inline-block;padding:12px;background:white;border-radius:12px;border:1px solid var(--border);"></div>
-        <p style="font-size:0.72rem;color:var(--ink-faint);margin-top:0.5rem;">用另一台设备扫描此二维码，复制内容后在 Summer 中导入</p>
-      </div>
-      <div id="sync-text-fallback" style="display:none;">
-        <p style="font-size:0.72rem;color:var(--ink-faint);margin-top:0.5rem;">数据量较大，无法生成二维码，请复制下方同步码。</p>
-      </div>
-      <textarea id="sync-code-out" rows="3" readonly
-        style="width:100%;margin-top:0.6rem;padding:0.6rem;border:1px solid var(--border);border-radius:8px;font-size:0.75rem;font-family:monospace;background:var(--surface);resize:none;display:none;color:var(--ink-soft);"></textarea>
-      <button id="sync-copy-btn" onclick="copySyncCode()" class="modal-btn" style="width:100%;margin-top:0.4rem;display:none;">复制同步码</button>
-    </div>
-
-    <div>
-      <div class="setup-label" style="margin-bottom:0.4rem;">第二步：在新设备导入</div>
-      <textarea id="sync-code-in" rows="3" placeholder="把同步码粘贴到这里..."
-        style="width:100%;padding:0.6rem;border:1.5px solid var(--border);border-radius:8px;font-size:0.75rem;font-family:monospace;background:white;resize:none;color:var(--ink);outline:none;"></textarea>
-      <button class="modal-btn primary" onclick="importSyncCode()" style="width:100%;margin-top:0.4rem;">导入数据</button>
-    </div>
-  </div>
-</div>
 
 <script>
+// ══════════════════════════════════════════════
+// Summer V1 — Unified Architecture
+// NOTE: This is a personal prototype. API key is stored
+// in browser localStorage for convenience. Not safe for
+// public deployment.
+// ══════════════════════════════════════════════
+
+// ── Runtime State ───────────────────────────
 let API_KEY = '';
 let SUMMER_NAME = 'Summer';
 let USER_NAME = '';
-let conversationHistory = [];
+let conversationHistory = [];  // In-session message array for API calls
 let isSleeping = false;
-let allSessions = [];
-let allSummaries = [];
 let pendingPhotoBase64 = null;
 let pendingPhotoMediaType = null;
 let debugMode = false;
-let db = null; // IndexedDB reference
+let db = null;                 // IndexedDB reference
+let cachedReflections = [];    // Loaded from IndexedDB at startup, used by Context Builder
+
+// ── Legacy (kept for backup/export only) ────
+let allSessions = [];          // LEGACY: backup to localStorage, will be phased out
 
 // ── IndexedDB Setup ─────────────────────────
+// Three stores: conversation_turns (raw), events (structured), daily_reflections (aggregated)
+// This is the source of truth. localStorage/allSessions is only a backup layer.
 function initDB() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('SummerDB', 1);
-
     request.onupgradeneeded = (e) => {
       const database = e.target.result;
-
-      // conversation_turns: raw dialogue pairs
       if (!database.objectStoreNames.contains('conversation_turns')) {
-        const turnStore = database.createObjectStore('conversation_turns', { keyPath: 'turn_id' });
-        turnStore.createIndex('session_id', 'session_id', { unique: false });
-        turnStore.createIndex('date', 'date', { unique: false });
+        const ts = database.createObjectStore('conversation_turns', { keyPath: 'turn_id' });
+        ts.createIndex('session_id', 'session_id', { unique: false });
+        ts.createIndex('date', 'date', { unique: false });
       }
-
-      // events: structured extraction results
       if (!database.objectStoreNames.contains('events')) {
-        const eventStore = database.createObjectStore('events', { keyPath: 'event_id' });
-        eventStore.createIndex('turn_id', 'turn_id', { unique: false });
-        eventStore.createIndex('date', 'date', { unique: false });
+        const es = database.createObjectStore('events', { keyPath: 'event_id' });
+        es.createIndex('turn_id', 'turn_id', { unique: false });
+        es.createIndex('date', 'date', { unique: false });
       }
-
-      // daily_reflections: daily summaries
       if (!database.objectStoreNames.contains('daily_reflections')) {
         database.createObjectStore('daily_reflections', { keyPath: 'date' });
       }
     };
-
-    request.onsuccess = (e) => {
-      db = e.target.result;
-      resolve(db);
-    };
-
-    request.onerror = (e) => {
-      console.error('IndexedDB init failed:', e);
-      reject(e);
-    };
+    request.onsuccess = (e) => { db = e.target.result; resolve(db); };
+    request.onerror = (e) => { console.error('IndexedDB init failed:', e); reject(e); };
   });
 }
 
-// ── IndexedDB helpers ───────────────────────
 function dbPut(storeName, data) {
   return new Promise((resolve, reject) => {
     if (!db) { resolve(null); return; }
     const tx = db.transaction(storeName, 'readwrite');
-    const store = tx.objectStore(storeName);
-    const request = store.put(data);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    const req = tx.objectStore(storeName).put(data);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
   });
 }
 
 function dbGetAll(storeName) {
   return new Promise((resolve, reject) => {
     if (!db) { resolve([]); return; }
-    const tx = db.transaction(storeName, 'readonly');
-    const store = tx.objectStore(storeName);
-    const request = store.getAll();
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    const req = db.transaction(storeName, 'readonly').objectStore(storeName).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
   });
 }
 
 function dbGetByIndex(storeName, indexName, value) {
   return new Promise((resolve, reject) => {
     if (!db) { resolve([]); return; }
-    const tx = db.transaction(storeName, 'readonly');
-    const store = tx.objectStore(storeName);
-    const index = store.index(indexName);
-    const request = index.getAll(value);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    const req = db.transaction(storeName, 'readonly').objectStore(storeName).index(indexName).getAll(value);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
   });
 }
 
@@ -842,85 +782,106 @@ function getTodayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
-// ── Event Extractor System Prompt ───────────
-function getExtractorPrompt() {
-  return `You are a precise emotion/event extractor for a self-awareness journaling system. Your job is to read a complete conversation turn (user message + companion reply) and extract structured data.
+// ── Load cached reflections (for Context Builder) ──
+async function loadCachedReflections() {
+  if (!db) { cachedReflections = []; return; }
+  const all = await dbGetAll('daily_reflections');
+  // Keep last 7 days
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 7);
+  cachedReflections = all
+    .filter(r => new Date(r.date) >= cutoff)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
 
-## Input
-You will receive one complete interaction: the user's message and the companion's reply. Read BOTH sides — the companion's reply often helps reveal emotions the user initially minimized or deflected.
+// ── Language Detection ──────────────────────
+function detectLanguage(text) {
+  if (!text) return 'unknown';
+  const cn = (text.match(/[\u4e00-\u9fff]/g) || []).length;
+  const ko = (text.match(/[\uac00-\ud7af\u1100-\u11ff]/g) || []).length;
+  const total = text.replace(/\s/g, '').length;
+  if (total === 0) return 'unknown';
+  if (ko / total > 0.2) return 'ko';
+  const cnRatio = cn / total;
+  if (cnRatio > 0.3) return cnRatio > 0.7 ? 'zh' : 'mixed';
+  return 'en';
+}
+
+// ── Event Extractor ─────────────────────────
+function getExtractorPrompt() {
+  return `You are a precise emotion/event extractor for a self-awareness journaling system. Read a complete conversation turn (user message + companion reply) and extract structured data.
 
 ## Output
-Respond with ONLY a valid JSON object. No markdown, no explanation, no preamble. Just the JSON.
+Respond with ONLY a valid JSON object. No markdown, no explanation, no preamble.
 
 ## Schema
 {
-  "primary_emotion": "string — the dominant emotion, in the user's language (e.g. '委屈', '焦虑', 'anxious', '平静')",
-  "secondary_emotions": ["string array, 0-2 items, other emotions present"],
-  "intensity": "number 1-5 (1=barely noticeable, 2=mild, 3=moderate, 4=strong, 5=overwhelming)",
-  "trigger": "string|null — what caused the emotion, brief phrase",
-  "body_state": "string|null — only if user explicitly mentions physical sensations (tired, headache, stomach, etc.)",
-  "theme": "string|null — recurring life theme (work, relationships, self-doubt, family, career, comparison, etc.)",
+  "primary_emotion": "string — dominant emotion in the user's language (e.g. '委屈', 'anxious', '평온')",
+  "secondary_emotions": ["0-2 other emotions present"],
+  "intensity": "number 1-5 (1=barely noticeable, 3=moderate, 5=overwhelming)",
+  "trigger": "string|null — what caused the emotion",
+  "body_state": "string|null — only if user explicitly mentions physical sensations",
+  "theme": "string|null — life theme (work, relationships, self-doubt, family, career, comparison, etc.)",
   "dream_flag": false,
-  "confidence": "number 0-1 — your confidence in this extraction"
+  "confidence": "number 0-1"
 }
 
 ## Rules
-
-1. **Read the full interaction.** If the user says "it's fine" but the companion's probing reveals it's NOT fine, code the revealed emotion, not the surface one.
-
-2. **Use the user's language for emotion words.** If they're writing in Chinese, emotions should be in Chinese (委屈, 焦虑, 烦躁). If English, use English. Don't translate.
-
-3. **Watch for minimizing language.** "还好" "没事" "it's fine" "whatever" — these often mask higher intensity. Look at the full exchange to calibrate intensity.
-
-4. **Return null for unknown fields, not guesses.** If the user doesn't mention body state, body_state is null. If there's no clear trigger, trigger is null.
-
-5. **Set dream_flag to true** only if the user is describing an actual dream or nightmare.
-
-6. **For casual/logistical turns with zero emotional content** (e.g. "what time is it" or "haha thanks"), return this exact JSON:
+1. Read the FULL interaction. If the user minimizes but the companion's probing reveals the real emotion, code the revealed emotion.
+2. Use the user's language for emotion words.
+3. Watch for minimizing: "还好" "it's fine" often mask higher intensity.
+4. Return null for unknown fields, not guesses.
+5. Set dream_flag true only for actual dreams/nightmares.
+6. For casual/logistical turns with zero emotional content, return:
 {"primary_emotion":null,"secondary_emotions":[],"intensity":null,"trigger":null,"body_state":null,"theme":null,"dream_flag":false,"confidence":0.0}
-
-7. **Confidence guide:**
-   - 0.9-1.0: User explicitly states emotion and trigger clearly
-   - 0.7-0.8: Emotion is clear from context, trigger is inferable
-   - 0.5-0.6: Emotion is ambiguous, you're making a judgment call
-   - 0.3-0.4: Very unclear, minimal emotional signal
-   - 0.0: No emotional content at all`;
+7. Confidence: 0.9+=explicit, 0.7-0.8=clear from context, 0.5-0.6=ambiguous, 0.3-0.4=very unclear, 0.0=no content`;
 }
 
-// ── Sleep Approx Calculator (Source B) ──────
-function calculateSleepApprox() {
-  // Find yesterday's last message timestamp and today's first message timestamp
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
+async function extractEvent(userMessage, assistantMessage, turnId) {
+  const userText = typeof userMessage === 'string'
+    ? userMessage
+    : (Array.isArray(userMessage) ? userMessage.filter(c => c.type === 'text').map(c => c.text).join(' ') : String(userMessage));
 
-  const todayStr = today.toDateString();
-  const yesterdayStr = yesterday.toDateString();
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 300,
+        system: getExtractorPrompt(),
+        messages: [{ role: 'user', content: `USER: ${userText}\n\nCOMPANION: ${assistantMessage}` }]
+      })
+    });
 
-  const todaySession = allSessions.find(s => new Date(s.date).toDateString() === todayStr);
-  const yesterdaySession = allSessions.find(s => new Date(s.date).toDateString() === yesterdayStr);
-
-  if (!todaySession || !yesterdaySession) return null;
-
-  const todayMessages = todaySession.messages || [];
-  const yesterdayMessages = yesterdaySession.messages || [];
-
-  if (todayMessages.length === 0 || yesterdayMessages.length === 0) return null;
-
-  // Find the last user message timestamp from yesterday (proxy for bedtime)
-  // and first user message timestamp from today (proxy for wake time)
-  // We use the session save times as proxy since individual messages don't have timestamps stored yet
-  const lastYesterday = new Date(yesterdaySession.date);
-  const firstToday = new Date(todaySession.date);
-
-  // Very rough: session date is the last save time
-  // For now, we estimate based on the goodnight detection and first message
-  // This will be more accurate once we store individual message timestamps in conversation_turns
-  const diffHours = (firstToday - lastYesterday) / (1000 * 60 * 60);
-
-  // Sanity check: sleep should be between 2 and 16 hours
-  if (diffHours >= 2 && diffHours <= 16) {
-    return Math.round(diffHours * 10) / 10;
+    const data = await response.json();
+    if (data.content && data.content[0]) {
+      let jsonText = data.content[0].text.trim().replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+      const extraction = JSON.parse(jsonText);
+      const event = {
+        event_id: generateId(),
+        turn_id: turnId,
+        date: getTodayStr(),
+        primary_emotion: extraction.primary_emotion || null,
+        secondary_emotions: extraction.secondary_emotions || [],
+        intensity: extraction.intensity || null,
+        trigger: extraction.trigger || null,
+        body_state: extraction.body_state || null,
+        theme: extraction.theme || null,
+        dream_flag: extraction.dream_flag || false,
+        confidence: extraction.confidence || 0,
+        sleep_approx: null
+      };
+      await dbPut('events', event);
+      return event;
+    }
+  } catch (e) {
+    console.error('Extraction failed:', e);
   }
   return null;
 }
@@ -928,12 +889,9 @@ function calculateSleepApprox() {
 // ── Debug Mode ──────────────────────────────
 function toggleDebug() {
   debugMode = !debugMode;
-  const btn = document.getElementById('debug-btn');
-  btn.classList.toggle('active', debugMode);
-
-  // Show/hide all existing debug panels
-  document.querySelectorAll('.debug-panel').forEach(panel => {
-    panel.style.display = debugMode ? 'block' : 'none';
+  document.getElementById('debug-btn').classList.toggle('active', debugMode);
+  document.querySelectorAll('.debug-panel').forEach(p => {
+    p.style.display = debugMode ? 'block' : 'none';
   });
 }
 
@@ -952,7 +910,7 @@ function createDebugPanel(extractionData) {
     ['secondary', extractionData.secondary_emotions?.length > 0 ? extractionData.secondary_emotions.join(', ') : null],
     ['intensity', extractionData.intensity],
     ['trigger', extractionData.trigger],
-    ['body_state', extractionData.body_state],
+    ['body', extractionData.body_state],
     ['theme', extractionData.theme],
     ['dream', extractionData.dream_flag ? '是' : null],
   ];
@@ -964,18 +922,90 @@ function createDebugPanel(extractionData) {
     }
   }
   html += `<div class="debug-field debug-conf"><span class="debug-key">confidence:</span><span class="debug-val">${extractionData.confidence}</span></div>`;
-
   panel.innerHTML = html;
   return panel;
 }
 
-// ── Event Extractor Call ────────────────────
-async function extractEvent(userMessage, assistantMessage, turnId) {
-  const userText = typeof userMessage === 'string'
-    ? userMessage
-    : (Array.isArray(userMessage) ? userMessage.filter(c => c.type === 'text').map(c => c.text).join(' ') : String(userMessage));
+// ── Export Helpers ───────────────────────────
+function toggleExportMenu() {
+  const menu = document.getElementById('export-menu');
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+function closeExportMenu() {
+  document.getElementById('export-menu').style.display = 'none';
+}
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('export-menu');
+  if (menu && !e.target.closest('.export-menu') && !e.target.closest('[title="导出数据"]')) {
+    menu.style.display = 'none';
+  }
+});
 
-  const extractionInput = `USER: ${userText}\n\nCOMPANION: ${assistantMessage}`;
+async function exportEventsCSV() {
+  const events = await dbGetAll('events');
+  if (events.length === 0) { alert('还没有事件数据，多聊几轮再试～'); return; }
+  const headers = ['event_id','turn_id','date','primary_emotion','secondary_emotions','intensity','trigger','body_state','theme','dream_flag','confidence','sleep_approx'];
+  const rows = events.map(e => headers.map(h => {
+    const v = e[h];
+    if (v === null || v === undefined) return '';
+    if (Array.isArray(v)) return `"${v.join('; ')}"`;
+    if (typeof v === 'string' && (v.includes(',') || v.includes('"'))) return `"${v.replace(/"/g, '""')}"`;
+    return v;
+  }).join(','));
+  downloadFile([headers.join(','), ...rows].join('\n'), `summer_events_${getTodayStr()}.csv`, 'text/csv;charset=utf-8');
+}
+
+async function exportReflectionsCSV() {
+  const reflections = await dbGetAll('daily_reflections');
+  if (reflections.length === 0) { alert('还没有每日小结，说"晚安"后会生成～'); return; }
+  const headers = ['date','dominant_emotions','notable_triggers','body_notes','daily_summary','event_count','report_language'];
+  const rows = reflections.map(r => headers.map(h => {
+    const v = r[h];
+    if (v === null || v === undefined) return '';
+    if (Array.isArray(v)) return `"${v.join('; ')}"`;
+    if (typeof v === 'string' && (v.includes(',') || v.includes('"') || v.includes('\n'))) return `"${v.replace(/"/g, '""')}"`;
+    return v;
+  }).join(','));
+  downloadFile([headers.join(','), ...rows].join('\n'), `summer_reflections_${getTodayStr()}.csv`, 'text/csv;charset=utf-8');
+}
+
+function downloadFile(content, filename, mimeType) {
+  const blob = new Blob(['\uFEFF' + content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Daily Reflection Builder ────────────────
+async function generateDailyReflection(targetDate) {
+  const date = targetDate || getTodayStr();
+  const events = await dbGetByIndex('events', 'date', date);
+  const meaningful = events.filter(e => e.primary_emotion !== null);
+  if (meaningful.length === 0) return;
+
+  const emotionCounts = {};
+  const triggers = [];
+  const bodyNotes = [];
+  let totalIntensity = 0, intensityCount = 0;
+
+  for (const e of meaningful) {
+    if (e.primary_emotion) emotionCounts[e.primary_emotion] = (emotionCounts[e.primary_emotion] || 0) + 1;
+    if (e.trigger) triggers.push(e.trigger);
+    if (e.body_state) bodyNotes.push(e.body_state);
+    if (e.intensity) { totalIntensity += e.intensity; intensityCount++; }
+  }
+
+  const dominantEmotions = Object.entries(emotionCounts).sort((a,b) => b[1]-a[1]).slice(0,3).map(([e]) => e);
+  const uniqueTriggers = [...new Set(triggers)];
+  const uniqueBodyNotes = [...new Set(bodyNotes)];
+
+  const statsText = `Date: ${date}
+Dominant emotions: ${dominantEmotions.join(', ')}
+Avg intensity: ${intensityCount > 0 ? (totalIntensity/intensityCount).toFixed(1) : 'N/A'}/5
+Triggers: ${uniqueTriggers.length > 0 ? uniqueTriggers.join(', ') : 'none'}
+Body states: ${uniqueBodyNotes.length > 0 ? uniqueBodyNotes.join(', ') : 'none'}
+Meaningful exchanges: ${meaningful.length}`;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -988,118 +1018,41 @@ async function extractEvent(userMessage, assistantMessage, turnId) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 300,
-        system: getExtractorPrompt(),
-        messages: [{ role: 'user', content: extractionInput }]
+        max_tokens: 200,
+        messages: [{ role: 'user', content: `Based on this emotional data, write a 2-4 sentence daily reflection. Warm, observational, non-judgmental. Write in the same language as the emotion words. No advice.\n\n${statsText}` }]
       })
     });
-
     const data = await response.json();
-    if (data.content && data.content[0]) {
-      let jsonText = data.content[0].text.trim();
-      // Strip markdown fences if present
-      jsonText = jsonText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-      const extraction = JSON.parse(jsonText);
+    const summary = data.content?.[0]?.text || '';
 
-      // Build event record
-      const event = {
-        event_id: generateId(),
-        turn_id: turnId,
-        date: getTodayStr(),
-        primary_emotion: extraction.primary_emotion || null,
-        secondary_emotions: extraction.secondary_emotions || [],
-        intensity: extraction.intensity || null,
-        trigger: extraction.trigger || null,
-        body_state: extraction.body_state || null,
-        theme: extraction.theme || null,
-        dream_flag: extraction.dream_flag || false,
-        confidence: extraction.confidence || 0,
-        sleep_approx: calculateSleepApprox()
-      };
-
-      // Store in IndexedDB
-      await dbPut('events', event);
-
-      return event;
-    }
+    const reflection = {
+      date,
+      dominant_emotions: dominantEmotions,
+      notable_triggers: uniqueTriggers,
+      body_notes: uniqueBodyNotes,
+      daily_summary: summary,
+      event_count: meaningful.length,
+      report_language: dominantEmotions.some(e => /[\u4e00-\u9fff]/.test(e)) ? 'zh' : 'en'
+    };
+    await dbPut('daily_reflections', reflection);
+    await loadCachedReflections(); // Refresh cache
   } catch (e) {
-    console.error('Extraction failed:', e);
+    console.error('Daily reflection failed:', e);
   }
-  return null;
 }
 
-// ── Export Menu ──────────────────────────────
-function toggleExportMenu() {
-  const menu = document.getElementById('export-menu');
-  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-}
-
-function closeExportMenu() {
-  document.getElementById('export-menu').style.display = 'none';
-}
-
-// Close export menu when clicking elsewhere
-document.addEventListener('click', (e) => {
-  const menu = document.getElementById('export-menu');
-  if (menu && !e.target.closest('.export-menu') && !e.target.closest('[title="导出数据"]')) {
-    menu.style.display = 'none';
-  }
-});
-
-// ── CSV Export ───────────────────────────────
-async function exportEventsCSV() {
+// Auto-generate reflections for past days with events but no reflection
+async function catchUpMissedReflections() {
+  if (!db) return;
   const events = await dbGetAll('events');
-  if (events.length === 0) {
-    alert('还没有提取到任何事件数据，多聊几轮再试试～');
-    return;
-  }
-
-  const headers = ['event_id','turn_id','date','primary_emotion','secondary_emotions','intensity','trigger','body_state','theme','dream_flag','confidence','sleep_approx'];
-  const rows = events.map(e =>
-    headers.map(h => {
-      const val = e[h];
-      if (val === null || val === undefined) return '';
-      if (Array.isArray(val)) return `"${val.join('; ')}"`;
-      if (typeof val === 'string' && (val.includes(',') || val.includes('"'))) return `"${val.replace(/"/g, '""')}"`;
-      return val;
-    }).join(',')
-  );
-
-  const csv = [headers.join(','), ...rows].join('\n');
-  downloadFile(csv, `summer_events_${getTodayStr()}.csv`, 'text/csv;charset=utf-8');
-}
-
-async function exportReflectionsCSV() {
   const reflections = await dbGetAll('daily_reflections');
-  if (reflections.length === 0) {
-    alert('还没有每日小结，对话结束后说"晚安"就会生成～');
-    return;
+  const today = getTodayStr();
+  const datesWithEvents = [...new Set(events.filter(e => e.primary_emotion !== null).map(e => e.date))];
+  const datesWithReflections = new Set(reflections.map(r => r.date));
+  const missed = datesWithEvents.filter(d => d !== today && !datesWithReflections.has(d)).sort();
+  if (missed.length > 0) {
+    await generateDailyReflection(missed[missed.length - 1]); // Most recent missed
   }
-
-  const headers = ['date','dominant_emotions','notable_triggers','body_notes','daily_summary','event_count','avg_sleep_approx','report_language'];
-  const rows = reflections.map(r =>
-    headers.map(h => {
-      const val = r[h];
-      if (val === null || val === undefined) return '';
-      if (Array.isArray(val)) return `"${val.join('; ')}"`;
-      if (typeof val === 'string' && (val.includes(',') || val.includes('"') || val.includes('\n'))) return `"${val.replace(/"/g, '""')}"`;
-      return val;
-    }).join(',')
-  );
-
-  const csv = [headers.join(','), ...rows].join('\n');
-  downloadFile(csv, `summer_reflections_${getTodayStr()}.csv`, 'text/csv;charset=utf-8');
-}
-
-function downloadFile(content, filename, mimeType) {
-  const BOM = '\uFEFF'; // UTF-8 BOM for Excel compatibility
-  const blob = new Blob([BOM + content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 function handlePhoto(event) {
@@ -1133,9 +1086,16 @@ function getSystemPrompt() {
     year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
   });
 
+  // ── Context Builder: inject recent daily reflections ──
   let contextBlock = '';
-  if (allSummaries.length > 0) {
-    contextBlock = `\n\n[Background — do not bring up proactively, only reference when naturally relevant]\n${allSummaries.map(s => `${s.date}: ${s.summary}`).join('\n')}`;
+  if (cachedReflections.length > 0) {
+    const lines = cachedReflections.map(r => {
+      let line = `${r.date}: ${r.daily_summary}`;
+      if (r.dominant_emotions?.length > 0) line += ` [emotions: ${r.dominant_emotions.join(', ')}]`;
+      if (r.notable_triggers?.length > 0) line += ` [triggers: ${r.notable_triggers.join(', ')}]`;
+      return line;
+    });
+    contextBlock = `\n\n[Background from recent days — do not bring up proactively, only reference when naturally relevant]\n${lines.join('\n')}`;
   }
 
   return `You are ${SUMMER_NAME}, a self-awareness conversation companion. ${userName} Today is ${today}.
@@ -1214,11 +1174,12 @@ function startApp() {
   document.getElementById('header-name').textContent = SUMMER_NAME;
   document.getElementById('header-avatar').textContent = '🐱';
   
-  // Initialize IndexedDB
-  initDB().then(() => {
-    console.log('IndexedDB initialized');
+  // Initialize IndexedDB, then load reflections into context cache
+  initDB().then(async () => {
+    console.log('IndexedDB ready');
+    await loadCachedReflections();
     catchUpMissedReflections();
-  }).catch(e => console.error('IndexedDB failed, continuing without it:', e));
+  }).catch(e => console.error('IndexedDB init failed, continuing without it:', e));
 
   loadHistory();
   addDateSeparator();
@@ -1235,102 +1196,8 @@ function startApp() {
   setTimeout(() => addMessage('summer', greeting), 400);
 }
 
-// Auto-generate reflections for past days that have events but no reflection
-async function catchUpMissedReflections() {
-  if (!db) return;
-  const events = await dbGetAll('events');
-  const reflections = await dbGetAll('daily_reflections');
-  const today = getTodayStr();
-
-  // Find unique dates that have events
-  const datesWithEvents = [...new Set(events.map(e => e.date))];
-  const datesWithReflections = new Set(reflections.map(r => r.date));
-
-  // Find dates that need reflections (not today, has events, no reflection yet)
-  const missedDates = datesWithEvents.filter(d => d !== today && !datesWithReflections.has(d));
-
-  if (missedDates.length > 0) {
-    // Generate for the most recent missed date
-    const targetDate = missedDates.sort().pop();
-    const dateEvents = events.filter(e => e.date === targetDate && e.primary_emotion !== null);
-    if (dateEvents.length > 0) {
-      // Temporarily set today to the target date for the reflection generator
-      await generateDailyReflectionForDate(targetDate, dateEvents);
-    }
-  }
-}
-
-async function generateDailyReflectionForDate(date, events) {
-  const meaningfulEvents = events.filter(e => e.primary_emotion !== null);
-  if (meaningfulEvents.length === 0) return;
-
-  const emotionCounts = {};
-  const triggers = [];
-  const bodyNotes = [];
-  let totalIntensity = 0;
-  let intensityCount = 0;
-  const sleepVals = [];
-
-  for (const e of meaningfulEvents) {
-    if (e.primary_emotion) emotionCounts[e.primary_emotion] = (emotionCounts[e.primary_emotion] || 0) + 1;
-    if (e.trigger) triggers.push(e.trigger);
-    if (e.body_state) bodyNotes.push(e.body_state);
-    if (e.intensity) { totalIntensity += e.intensity; intensityCount++; }
-    if (e.sleep_approx) sleepVals.push(e.sleep_approx);
-  }
-
-  const dominantEmotions = Object.entries(emotionCounts).sort((a,b) => b[1]-a[1]).slice(0,3).map(([e]) => e);
-  const uniqueTriggers = [...new Set(triggers)];
-  const uniqueBodyNotes = [...new Set(bodyNotes)];
-  const avgSleep = sleepVals.length > 0 ? Math.round((sleepVals.reduce((a,b) => a+b, 0) / sleepVals.length) * 10) / 10 : null;
-
-  const statsText = `Emotional data for ${date}:
-- Dominant emotions: ${dominantEmotions.join(', ')}
-- Average intensity: ${intensityCount > 0 ? (totalIntensity / intensityCount).toFixed(1) : 'N/A'}/5
-- Triggers: ${uniqueTriggers.length > 0 ? uniqueTriggers.join(', ') : 'none identified'}
-- Body states: ${uniqueBodyNotes.length > 0 ? uniqueBodyNotes.join(', ') : 'none mentioned'}
-- Number of meaningful exchanges: ${meaningfulEvents.length}`;
-
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 200,
-        messages: [{
-          role: 'user',
-          content: `Based on this emotional data from a day's conversations, write a 2-4 sentence daily reflection. Be warm, observational, non-judgmental. Write in the same language as the emotion words. Do NOT give advice.\n\n${statsText}`
-        }]
-      })
-    });
-
-    const data = await response.json();
-    const summary = data.content?.[0]?.text || '';
-
-    const reflection = {
-      date: date,
-      dominant_emotions: dominantEmotions,
-      notable_triggers: uniqueTriggers,
-      body_notes: uniqueBodyNotes,
-      daily_summary: summary,
-      event_count: meaningfulEvents.length,
-      avg_sleep_approx: avgSleep,
-      report_language: dominantEmotions.some(e => /[\u4e00-\u9fff]/.test(e)) ? 'zh' : 'en'
-    };
-
-    await dbPut('daily_reflections', reflection);
-  } catch (e) {
-    console.error('Catchup reflection failed:', e);
-  }
-}
-
 function loadHistory() {
+  // LEGACY: load today's conversation from localStorage backup
   const saved = localStorage.getItem('summer_sessions');
   if (saved) {
     allSessions = JSON.parse(saved);
@@ -1340,69 +1207,16 @@ function loadHistory() {
       conversationHistory = todaySession.messages || [];
     }
   }
-  loadSummaries();
-  catchUpMissedSummaries();
+  // Context is now loaded from cachedReflections (IndexedDB), not allSummaries
 }
 
-function catchUpMissedSummaries() {
-  // 检查过去7天里，有对话但没有摘要的那些天，补上
-  const today = new Date().toDateString();
-  const missedSessions = allSessions.filter(s => {
-    const isToday = new Date(s.date).toDateString() === today;
-    if (isToday) return false; // 今天不补，今天说晚安才总结
-    const hasMessages = (s.messages || []).filter(m => m.role === 'user').length >= 2;
-    if (!hasMessages) return false;
-    const dateStr = new Date(s.date).toLocaleDateString('zh-CN', {month:'long', day:'numeric'});
-    const alreadySummarized = allSummaries.some(sum => sum.date === dateStr);
-    return !alreadySummarized;
-  });
-
-  if (missedSessions.length === 0) return;
-
-  // 一次只补最近一天，不一次性发太多请求
-  const session = missedSessions[missedSessions.length - 1];
-  summarizeSession(session);
-}
-
-async function summarizeSession(session) {
-  const dateStr = new Date(session.date).toLocaleDateString('zh-CN', {month:'long', day:'numeric'});
-  const messages = (session.messages || []).map(m => {
-    const role = m.role === 'user' ? '我' : SUMMER_NAME;
-    const content = typeof m.content === 'string'
-      ? m.content
-      : m.content.map(c => c.text || '[图片]').join(' ');
-    return `${role}: ${content}`;
-  }).join('\n');
-
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 120,
-        messages: [{
-          role: 'user',
-          content: `以下是用户某天的对话记录。请用1-2句话概括这天的情绪状态和主要发生的事，语言简洁克制，不评判。只输出摘要本身，不要任何前缀。\n\n${messages}`
-        }]
-      })
-    });
-    const data = await response.json();
-    if (data.content && data.content[0]) {
-      saveSummary(dateStr, data.content[0].text);
-      loadSummaries();
-    }
-  } catch (e) {
-    // 静默失败
-  }
-}
+// ── REMOVED: catchUpMissedSummaries, summarizeSession, loadSummaries, saveSummary, generateDailySummary
+// These are replaced by the daily_reflections system (generateDailyReflection + catchUpMissedReflections)
 
 function saveHistory() {
+  // LEGACY backup: saves conversationHistory to localStorage for data safety.
+  // IndexedDB conversation_turns is the source of truth for individual turns.
+  // This backup lets us recover data if IndexedDB is cleared.
   const today = new Date().toDateString();
   const idx = allSessions.findIndex(s => new Date(s.date).toDateString() === today);
   const session = { date: new Date().toISOString(), messages: conversationHistory };
@@ -1410,36 +1224,6 @@ function saveHistory() {
   else allSessions.push(session);
   if (allSessions.length > 90) allSessions = allSessions.slice(-90);
   localStorage.setItem('summer_sessions', JSON.stringify(allSessions));
-}
-
-function loadSummaries() {
-  const saved = localStorage.getItem('summer_summaries');
-  if (saved) {
-    allSummaries = JSON.parse(saved);
-    // 只保留最近7天
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 7);
-    allSummaries = allSummaries.filter(s => new Date(s.date) >= cutoff);
-  }
-}
-
-function saveSummary(dateStr, summaryText) {
-  loadSummaries();
-  // 如果今天已经有摘要就覆盖
-  const idx = allSummaries.findIndex(s => s.date === dateStr);
-  if (idx >= 0) allSummaries[idx].summary = summaryText;
-  else allSummaries.push({ date: dateStr, summary: summaryText });
-  localStorage.setItem('summer_summaries', JSON.stringify(allSummaries));
-}
-
-async function generateDailySummary() {
-  const userMessages = conversationHistory.filter(m => m.role === 'user');
-  if (userMessages.length < 2) return;
-  const todayStr = new Date().toLocaleDateString('zh-CN', {month:'long', day:'numeric'});
-  const alreadySummarized = allSummaries.some(s => s.date === todayStr);
-  if (alreadySummarized) return;
-  const todaySession = { date: new Date().toISOString(), messages: conversationHistory };
-  await summarizeSession(todaySession);
 }
 
 function addDateSeparator() {
@@ -1566,8 +1350,7 @@ async function sendMessage() {
     const isGoodnight = userContent.includes('晚安');
     addMessage('summer', isGoodnight ? '晚安 🌙 今天的你我都记住了。' : '好，我在这里。🌙');
     if (isGoodnight) {
-      generateDailySummary();
-      generateDailyReflection(); // New: generate structured daily reflection
+      generateDailyReflection(); // Generate structured daily reflection from events
     }
     document.getElementById('send-btn').disabled = false;
     return;
@@ -1600,14 +1383,13 @@ async function sendMessage() {
       const reply = data.content[0].text;
       const summerBubble = addMessage('summer', reply);
       conversationHistory.push({ role: 'assistant', content: reply });
-      saveHistory();
+      saveHistory(); // LEGACY backup
 
       // ── Turn Assembler: save complete turn to IndexedDB ──
       const turnId = generateId();
-      const sessionId = getTodayStr();
       const turn = {
         turn_id: turnId,
-        session_id: sessionId,
+        session_id: getTodayStr(),
         timestamp: new Date().toISOString(),
         input_type: hasPhoto ? 'mixed' : 'text',
         user_message: typeof userContent === 'string' ? userContent : (text || '[photo]'),
@@ -1615,13 +1397,12 @@ async function sendMessage() {
         media_refs: hasPhoto ? ['inline_photo'] : [],
         turn_language: detectLanguage(typeof userContent === 'string' ? userContent : text)
       };
-      await dbPut('conversation_turns', turn);
+      dbPut('conversation_turns', turn).catch(e => console.error('Turn save failed:', e));
 
       // ── Engine 2: Event Extractor (background, non-blocking) ──
       extractEvent(userContent, reply, turnId).then(event => {
         if (event && summerBubble && summerBubble.parentElement) {
           const debugPanel = createDebugPanel(event);
-          // Insert debug panel after the bubble's parent row
           summerBubble.parentElement.after(debugPanel);
         }
       }).catch(e => console.error('Extraction error:', e));
@@ -1635,102 +1416,6 @@ async function sendMessage() {
   }
   
   document.getElementById('send-btn').disabled = false;
-}
-
-// Simple language detection helper
-function detectLanguage(text) {
-  if (!text) return 'unknown';
-  const chineseChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
-  const totalChars = text.replace(/\s/g, '').length;
-  if (totalChars === 0) return 'unknown';
-  const ratio = chineseChars / totalChars;
-  if (ratio > 0.3) return ratio > 0.7 ? 'zh' : 'mixed';
-  return 'en';
-}
-
-// ── Daily Reflection (IndexedDB-based) ──────
-async function generateDailyReflection() {
-  const today = getTodayStr();
-  const events = await dbGetByIndex('events', 'date', today);
-
-  // Filter out null-emotion events
-  const meaningfulEvents = events.filter(e => e.primary_emotion !== null);
-  if (meaningfulEvents.length === 0) return;
-
-  // Compute statistics
-  const emotionCounts = {};
-  const triggers = [];
-  const bodyNotes = [];
-  let totalIntensity = 0;
-  let intensityCount = 0;
-  const sleepVals = [];
-
-  for (const e of meaningfulEvents) {
-    if (e.primary_emotion) {
-      emotionCounts[e.primary_emotion] = (emotionCounts[e.primary_emotion] || 0) + 1;
-    }
-    if (e.trigger) triggers.push(e.trigger);
-    if (e.body_state) bodyNotes.push(e.body_state);
-    if (e.intensity) { totalIntensity += e.intensity; intensityCount++; }
-    if (e.sleep_approx) sleepVals.push(e.sleep_approx);
-  }
-
-  // Sort emotions by frequency
-  const dominantEmotions = Object.entries(emotionCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([emotion]) => emotion);
-
-  const uniqueTriggers = [...new Set(triggers)];
-  const uniqueBodyNotes = [...new Set(bodyNotes)];
-  const avgSleep = sleepVals.length > 0 ? Math.round((sleepVals.reduce((a,b) => a+b, 0) / sleepVals.length) * 10) / 10 : null;
-
-  // Generate natural language summary via Claude
-  const statsText = `Today's emotional data:
-- Dominant emotions: ${dominantEmotions.join(', ')}
-- Average intensity: ${intensityCount > 0 ? (totalIntensity / intensityCount).toFixed(1) : 'N/A'}/5
-- Triggers: ${uniqueTriggers.length > 0 ? uniqueTriggers.join(', ') : 'none identified'}
-- Body states: ${uniqueBodyNotes.length > 0 ? uniqueBodyNotes.join(', ') : 'none mentioned'}
-- Number of meaningful exchanges: ${meaningfulEvents.length}
-- Approx sleep: ${avgSleep ? avgSleep + ' hours' : 'unknown'}`;
-
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 200,
-        messages: [{
-          role: 'user',
-          content: `Based on this emotional data from today's conversations, write a 2-4 sentence daily reflection. Be warm, observational, non-judgmental. Write in the same language as the emotion words. Do NOT give advice. Just reflect what happened today.\n\n${statsText}`
-        }]
-      })
-    });
-
-    const data = await response.json();
-    const summary = data.content?.[0]?.text || '';
-
-    const reflection = {
-      date: today,
-      dominant_emotions: dominantEmotions,
-      notable_triggers: uniqueTriggers,
-      body_notes: uniqueBodyNotes,
-      daily_summary: summary,
-      event_count: meaningfulEvents.length,
-      avg_sleep_approx: avgSleep,
-      report_language: dominantEmotions.some(e => /[\u4e00-\u9fff]/.test(e)) ? 'zh' : 'en'
-    };
-
-    await dbPut('daily_reflections', reflection);
-  } catch (e) {
-    console.error('Daily reflection generation failed:', e);
-  }
 }
 
 function toggleSleep() {
@@ -1763,6 +1448,8 @@ function selectRange(days) {
   }
 }
 
+// LEGACY PROTOTYPE: This report reads raw allSessions directly.
+// Future version will be rebuilt on events + daily_reflections.
 async function generateReport() {
   if (allSessions.length === 0 && conversationHistory.length < 2) {
     alert('多聊一些，Summer 才能帮你生成回顾～');
@@ -1938,97 +1625,6 @@ function toggleVoice() {
   };
 
   recognition.start();
-}
-
-// ── Sync ─────────────────────────────────────
-function openSyncModal() {
-  document.getElementById('sync-code-out').style.display = 'none';
-  document.getElementById('sync-copy-btn').style.display = 'none';
-  document.getElementById('sync-qr-container').style.display = 'none';
-  document.getElementById('sync-text-fallback').style.display = 'none';
-  document.getElementById('sync-code-out').value = '';
-  document.getElementById('sync-code-in').value = '';
-  const qrEl = document.getElementById('sync-qr');
-  qrEl.innerHTML = '';
-  document.getElementById('sync-overlay').style.display = 'flex';
-}
-
-function closeSyncModal(e) {
-  if (e.target === document.getElementById('sync-overlay')) {
-    document.getElementById('sync-overlay').style.display = 'none';
-  }
-}
-
-function generateSyncCode() {
-  const data = {
-    sessions: allSessions,
-    name: SUMMER_NAME,
-    userName: USER_NAME,
-    exportedAt: new Date().toISOString()
-  };
-  const code = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-  const out = document.getElementById('sync-code-out');
-  out.value = code;
-
-  const QR_MAX_LENGTH = 2500;
-
-  if (code.length <= QR_MAX_LENGTH && typeof QRCode !== 'undefined') {
-    const qrEl = document.getElementById('sync-qr');
-    qrEl.innerHTML = '';
-    new QRCode(qrEl, {
-      text: code,
-      width: 200,
-      height: 200,
-      colorDark: '#2c2416',
-      colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.L
-    });
-    document.getElementById('sync-qr-container').style.display = 'block';
-    document.getElementById('sync-text-fallback').style.display = 'none';
-  } else {
-    document.getElementById('sync-qr-container').style.display = 'none';
-    document.getElementById('sync-text-fallback').style.display = 'block';
-  }
-
-  out.style.display = 'block';
-  document.getElementById('sync-copy-btn').style.display = 'block';
-}
-
-function copySyncCode() {
-  const code = document.getElementById('sync-code-out').value;
-  navigator.clipboard.writeText(code).then(() => {
-    document.getElementById('sync-copy-btn').textContent = '已复制 ✓';
-    setTimeout(() => document.getElementById('sync-copy-btn').textContent = '复制同步码', 2000);
-  });
-}
-
-function importSyncCode() {
-  const code = document.getElementById('sync-code-in').value.trim();
-  if (!code) { alert('请先粘贴同步码'); return; }
-  try {
-    const data = JSON.parse(decodeURIComponent(escape(atob(code))));
-    if (!data.sessions) throw new Error('格式不对');
-
-    const existing = allSessions;
-    const incoming = data.sessions;
-
-    // Merge: keep all unique dates, prefer newer data for same date
-    const merged = {};
-    [...existing, ...incoming].forEach(s => {
-      const key = new Date(s.date).toDateString();
-      if (!merged[key] || new Date(s.date) > new Date(merged[key].date)) {
-        merged[key] = s;
-      }
-    });
-
-    allSessions = Object.values(merged).sort((a, b) => new Date(a.date) - new Date(b.date));
-    localStorage.setItem('summer_sessions', JSON.stringify(allSessions));
-
-    document.getElementById('sync-overlay').style.display = 'none';
-    alert(`导入成功！合并了 ${allSessions.length} 天的记录。`);
-  } catch(e) {
-    alert('同步码有问题，请重新生成试试。');
-  }
 }
 
 // Auto-load on revisit
